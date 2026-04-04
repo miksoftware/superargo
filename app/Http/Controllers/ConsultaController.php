@@ -66,27 +66,46 @@ class ConsultaController extends Controller
 
     public function processNext(Consulta $consulta, SuperargoService $service)
     {
-        $result = $consulta->pendingResults()->first();
+        try {
+            $result = $consulta->pendingResults()->first();
 
-        if (!$result) {
-            $consulta->update(['status' => 'completed']);
-            return response()->json(['done' => true, 'message' => 'Todas las cédulas procesadas.']);
+            if (!$result) {
+                $consulta->update(['status' => 'completed']);
+                return response()->json(['done' => true, 'message' => 'Todas las cédulas procesadas.']);
+            }
+
+            $consulta->update(['status' => 'processing']);
+
+            $data = $service->consultar($result->cedula);
+
+            // Solo actualizar campos que existen en fillable
+            $fillable = array_flip($result->getFillable());
+            $updateData = array_intersect_key($data, $fillable);
+            $updateData['processed'] = true;
+
+            $result->update($updateData);
+            $consulta->increment('processed');
+
+            return response()->json([
+                'done' => false,
+                'result' => $result->fresh(),
+                'processed' => $consulta->fresh()->processed,
+                'total' => $consulta->total_cedulas,
+            ]);
+        } catch (\Throwable $e) {
+            \Log::error("processNext error consulta={$consulta->id}: " . $e->getMessage());
+            return response()->json([
+                'done' => false,
+                'error' => $e->getMessage(),
+                'result' => [
+                    'cedula' => $result->cedula ?? '?',
+                    'found' => false,
+                    'error' => 'Error interno: ' . $e->getMessage(),
+                ],
+                'processed' => $consulta->processed,
+                'total' => $consulta->total_cedulas,
+            ], 200); // 200 para que el JS lo procese como resultado fallido, no como crash
         }
-
-        $consulta->update(['status' => 'processing']);
-
-        $data = $service->consultar($result->cedula);
-
-        $result->update(array_merge($data, ['processed' => true]));
-
-        $consulta->increment('processed');
-
-        return response()->json([
-            'done' => false,
-            'result' => $result->fresh(),
-            'processed' => $consulta->fresh()->processed,
-            'total' => $consulta->total_cedulas,
-        ]);
     }
 
     public function pause(Consulta $consulta)
