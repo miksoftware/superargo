@@ -83,6 +83,17 @@ class ConsultaController extends Controller
             $updateData = array_intersect_key($data, $fillable);
             $updateData['processed'] = true;
 
+            // Convertir strings vacías a null para evitar errores en MySQL strict mode
+            foreach ($updateData as $key => $value) {
+                if ($value === '' || $value === false) {
+                    $updateData[$key] = null;
+                }
+            }
+            // found debe ser boolean/int, no null
+            if (isset($data['found'])) {
+                $updateData['found'] = $data['found'] ? 1 : 0;
+            }
+
             $result->update($updateData);
             $consulta->increment('processed');
 

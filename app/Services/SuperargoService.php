@@ -133,8 +133,8 @@ class SuperargoService
             'ips' => '',
             'eps_nombre' => $this->resolveEpsName($epsCode, $data),
             'fecha_nacimiento' => $data['fecha_nacimiento'] ?? '',
-            'edad' => $data['edad'] ?? null,
-            'sexo' => $data['sexo'] ?? null,
+            'edad' => !empty($data['edad']) ? (int) $data['edad'] : null,
+            'sexo' => !empty($data['sexo']) ? (int) $data['sexo'] : null,
             'error' => null,
         ];
     }
