@@ -48,8 +48,11 @@
     <p id="empty-msg" class="text-muted text-center" style="padding:1rem">Los resultados aparecerán aquí al iniciar el proceso.</p>
 </div>
 
+<div id="error-detail" class="alert alert-error" style="display:none;word-break:break-all"></div>
+
 <script>
-const consultaId = {{ $consulta->id }};
+const urlProcessNext = "{{ route('consultas.processNext', $consulta) }}";
+const urlPause = "{{ route('consultas.pause', $consulta) }}";
 const total = {{ $consulta->total_cedulas }};
 const delay = {{ config('superargo.delay', 500) }};
 const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
@@ -69,8 +72,15 @@ function updateUI() {
     document.getElementById('progress-text').textContent = pct + '%';
 }
 
+function showError(msg) {
+    const el = document.getElementById('error-detail');
+    el.style.display = 'block';
+    el.textContent = msg;
+}
+
 function addResultCard(r) {
     document.getElementById('empty-msg').style.display = 'none';
+    document.getElementById('error-detail').style.display = 'none';
     const container = document.getElementById('results-container');
     const div = document.createElement('div');
     div.className = 'result-card ' + (r.found ? 'found' : 'notfound');
@@ -85,7 +95,8 @@ function addResultCard(r) {
     } else {
         div.innerHTML = `
             <div><strong>${r.cedula}</strong></div>
-            <div colspan="2" style="color:#e74c3c">${r.error || 'No encontrado'}</div>
+            <div style="color:#e74c3c">${r.error || 'No encontrado'}</div>
+            <div></div>
             <div><span class="badge badge-notfound">No encontrado</span></div>
         `;
     }
@@ -97,7 +108,7 @@ async function processNext() {
     if (!running) return;
 
     try {
-        const res = await fetch(`/consultas/${consultaId}/process-next`, {
+        const res = await fetch(urlProcessNext, {
             method: 'POST',
             headers: {
                 'X-CSRF-TOKEN': csrfToken,
@@ -105,6 +116,19 @@ async function processNext() {
                 'Accept': 'application/json'
             }
         });
+
+        // Si la respuesta no es OK, mostrar el error real
+        if (!res.ok) {
+            const text = await res.text();
+            let msg = `HTTP ${res.status}: `;
+            try {
+                const json = JSON.parse(text);
+                msg += json.message || JSON.stringify(json);
+            } catch(e) {
+                msg += text.substring(0, 500);
+            }
+            throw new Error(msg);
+        }
 
         const data = await res.json();
 
@@ -124,10 +148,10 @@ async function processNext() {
         updateUI();
         addResultCard(data.result);
 
-        // Delay antes de la siguiente
         setTimeout(processNext, delay);
     } catch (err) {
         console.error('Error:', err);
+        showError(err.message || err);
         document.getElementById('status-text').textContent = 'Error - Reintentar';
         document.getElementById('status-text').className = 'badge badge-paused';
         running = false;
@@ -143,12 +167,13 @@ function startProcessing() {
     document.getElementById('btn-pause').style.display = 'inline-flex';
     document.getElementById('status-text').textContent = 'Procesando...';
     document.getElementById('status-text').className = 'badge badge-processing';
+    document.getElementById('error-detail').style.display = 'none';
     processNext();
 }
 
 function pauseProcessing() {
     running = false;
-    fetch(`/consultas/${consultaId}/pause`, {
+    fetch(urlPause, {
         method: 'POST',
         headers: { 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json' }
     });
@@ -159,7 +184,6 @@ function pauseProcessing() {
     document.getElementById('status-text').className = 'badge badge-paused';
 }
 
-// Iniciar automáticamente al cargar la página
 document.addEventListener('DOMContentLoaded', function() {
     startProcessing();
 });
