@@ -134,9 +134,13 @@ Accept: application/json
 | `estado_afiliado`   | string / null   | Estado actual del afiliado (ej. `ACTIVO`, `RETIRADO`, `SUSPENDIDO`)               |
 | `sede`              | string / null   | Sede de Superargo asignada al afiliado                                            |
 | `ips`               | string / null   | IPS primaria asignada al afiliado                                                 |
+| `eps_nombre`        | string / null   | Nombre oficial de la EPS registrado en el sistema                                 |
 | `celular`           | string / null   | Número de celular de contacto registrado                                          |
 | `telefono_fijo`     | string / null   | Teléfono fijo de contacto. Puede ser `null`                                       |
 | `correo`            | string / null   | Correo electrónico de contacto. Puede ser `null`                                  |
+| `fecha_nacimiento`  | string / null   | Fecha de nacimiento en formato `YYYY-MM-DD`                                       |
+| `edad`              | integer / null  | Edad del afiliado en años al momento de la consulta                               |
+| `sexo`              | string / null   | Sexo del afiliado (`M` = Masculino, `F` = Femenino)                               |
 | `poblacion_especial`| string / null   | Indica si el afiliado pertenece a alguna población especial. `null` si no aplica  |
 | `grupo_etnico`      | string / null   | Grupo étnico del afiliado si aplica. `null` si no aplica                          |
 | `consultado_en`     | string ISO 8601 | Fecha y hora en que se realizó la consulta (UTC)                                  |
